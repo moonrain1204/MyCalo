@@ -3,28 +3,31 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MyCalo v1.1.0 - AI 辨識與雙圖紀錄</title>
+    <title>MyCalo v1.1.2 - 強力 OCR 辨識版</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src='https://unpkg.com/tesseract.js@v2.1.0/dist/tesseract.min.js'></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
         ::-webkit-scrollbar { display: none; }
         .drawer-active { transform: translateY(0) !important; }
-        .no-select { -webkit-touch-callout: none; user-select: none; }
-        .food-thumb { width: 56px; height: 56px; object-fit: cover; border-radius: 14px; }
-        .loading-ring { border: 3px solid #f3f3f3; border-top: 3px solid #6366f1; border-radius: 50%; width: 20px; height: 20px; animation: spin 1s linear infinite; }
-        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .input-highlight { animation: highlight-green 1s ease; }
+        @keyframes highlight-green {
+            0% { background-color: #f0fdf4; border-color: #22c55e; }
+            100% { background-color: white; border-color: transparent; }
+        }
+        .loading-dots:after { content: ' .'; animation: dots 1.5s steps(5, end) infinite; }
+        @keyframes dots { 0%, 20% { content: ' .'; } 40% { content: ' ..'; } 60% { content: ' ...'; } 80%, 100% { content: ''; } }
     </style>
 </head>
-<body class="bg-slate-50 font-sans text-slate-900 no-select">
+<body class="bg-slate-50 font-sans text-slate-900 overflow-x-hidden">
 
     <div id="app" class="max-w-md mx-auto min-h-screen bg-white shadow-2xl relative pb-32">
         
-        <header class="p-8 bg-gradient-to-br from-indigo-600 to-blue-500 text-white rounded-b-[2.5rem] shadow-xl">
+        <header class="p-8 bg-gradient-to-br from-indigo-600 to-blue-500 text-white rounded-b-[2.5rem] shadow-xl relative">
             <div class="flex justify-between items-center mb-6">
-                <div class="text-sm font-light opacity-90" id="headerDate">載入中...</div>
-                <button onclick="toggleUserModal(true)" class="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center active:scale-90 transition-transform">
-                    <i class="fas fa-user-circle text-xl"></i>
+                <div class="text-sm font-light opacity-90" id="headerDate">2026年1月1日</div>
+                <button onclick="toggleUserModal(true)" class="p-3 -mr-3 active:scale-90 transition-transform">
+                    <i class="fas fa-user-circle text-2xl"></i>
                 </button>
             </div>
             <div class="flex items-center justify-around">
@@ -35,91 +38,99 @@
                     </svg>
                     <div class="absolute inset-0 flex flex-col items-center justify-center">
                         <span id="displayKcal" class="text-3xl font-bold">0</span>
-                        <p class="text-[10px] opacity-80 uppercase">今日攝取 kcal</p>
+                        <p class="text-[10px] opacity-80">今日攝取 KCAL</p>
                     </div>
                 </div>
-                <div class="space-y-1 text-sm">
-                    <div class="text-[10px] opacity-70 mb-1">預算: <span id="budgetDisplay">1500</span> kcal</div>
-                    <div class="w-32 flex justify-between border-b border-white/10"><span>碳水</span><span id="statCarb">0g</span></div>
-                    <div class="w-32 flex justify-between border-b border-white/10"><span>蛋白</span><span id="statPro">0g</span></div>
-                    <div class="w-32 flex justify-between"><span>脂肪</span><span id="statFat">0g</span></div>
+                <div class="text-sm">
+                    <p class="text-[10px] opacity-60 mb-2">預算: <span id="budgetDisplay">1500</span> kcal</p>
+                    <div class="space-y-1">
+                        <div class="w-28 flex justify-between border-b border-white/10 pb-1"><span>碳水</span><span id="statCarb">0g</span></div>
+                        <div class="w-28 flex justify-between border-b border-white/10 pb-1"><span>蛋白</span><span id="statPro">0g</span></div>
+                        <div class="w-28 flex justify-between"><span>脂肪</span><span id="statFat">0g</span></div>
+                    </div>
                 </div>
             </div>
         </header>
 
-        <main class="p-6 space-y-4">
-            <div class="flex justify-between items-end">
-                <h3 class="text-xl font-bold text-gray-800">用餐紀錄</h3>
-                <span class="text-[10px] text-gray-400">點擊編輯，長按刪除</span>
-            </div>
+        <main class="p-6">
+            <h3 class="text-xl font-bold text-gray-800 mb-4">用餐紀錄</h3>
             <div id="mealList" class="space-y-3"></div>
         </main>
 
         <div id="searchDrawer" class="fixed inset-0 bg-black/60 z-50 hidden backdrop-blur-sm">
-            <div id="drawerContent" class="absolute bottom-0 w-full max-w-md bg-white rounded-t-[2.5rem] p-6 max-h-[95vh] overflow-y-auto transform translate-y-full transition-transform duration-500">
-                <div class="w-12 h-1.5 bg-gray-200 rounded-full mx-auto mb-6"></div>
+            <div id="drawerContent" class="absolute bottom-0 w-full max-w-md bg-white rounded-t-[3rem] p-8 max-h-[95vh] overflow-y-auto transform translate-y-full transition-transform duration-500 shadow-2xl">
+                <div class="w-12 h-1.5 bg-slate-200 rounded-full mx-auto mb-6"></div>
                 
                 <input type="hidden" id="editingId">
-                <input type="text" id="foodInput" class="w-full bg-gray-100 rounded-2xl p-4 mb-6 text-lg font-bold outline-none border-2 border-transparent focus:border-indigo-400" placeholder="食品名稱 (如: 味味麵)">
+                <input type="text" id="foodInput" class="w-full bg-slate-100 rounded-2xl p-4 mb-6 text-lg font-bold outline-none border-2 border-transparent focus:border-indigo-400 transition-all" placeholder="輸入名稱或待 AI 辨識">
 
                 <div class="grid grid-cols-2 gap-4 mb-6">
                     <div class="space-y-2">
-                        <label class="text-xs font-bold text-slate-400 ml-1">1. 食品縮圖</label>
-                        <label class="block h-32 bg-slate-50 rounded-2xl border-2 border-dashed border-slate-200 flex items-center justify-center overflow-hidden cursor-pointer relative">
+                        <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">1. 食品封面</span>
+                        <label class="block h-36 bg-slate-50 rounded-[2rem] border-2 border-dashed border-slate-200 flex items-center justify-center overflow-hidden cursor-pointer">
                             <input type="file" class="hidden" accept="image/*" onchange="handleImage(this, 'thumb')">
-                            <div id="thumbPreview" class="text-center p-2"><i class="fas fa-image text-slate-300 text-2xl mb-1"></i><p class="text-[10px] text-slate-400">上傳封面</p></div>
+                            <div id="thumbPreview" class="text-center"><i class="fas fa-camera text-slate-300 text-2xl mb-2"></i><p class="text-[10px] text-slate-400">上傳縮圖</p></div>
                         </label>
                     </div>
                     <div class="space-y-2">
-                        <label class="text-xs font-bold text-slate-400 ml-1">2. 營養成分表</label>
-                        <label class="block h-32 bg-slate-50 rounded-2xl border-2 border-dashed border-slate-200 flex items-center justify-center overflow-hidden cursor-pointer relative">
+                        <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">2. 營養標示</span>
+                        <label class="block h-36 bg-slate-50 rounded-[2rem] border-2 border-dashed border-slate-200 flex items-center justify-center overflow-hidden cursor-pointer relative">
                             <input type="file" class="hidden" accept="image/*" onchange="handleImage(this, 'ocr')">
-                            <div id="ocrPreview" class="text-center p-2"><i class="fas fa-barcode text-slate-300 text-2xl mb-1"></i><p class="text-[10px] text-slate-400">辨識成分</p></div>
-                            <div id="ocrLoading" class="hidden absolute inset-0 bg-white/80 flex items-center justify-center"><div class="loading-ring"></div></div>
+                            <div id="ocrPreview" class="text-center"><i class="fas fa-file-invoice text-slate-300 text-2xl mb-2"></i><p class="text-[10px] text-slate-400">掃描數據</p></div>
+                            <div id="ocrLoading" class="hidden absolute inset-0 bg-white/90 flex flex-col items-center justify-center">
+                                <div class="w-8 h-8 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin mb-2"></div>
+                                <p class="text-[10px] text-indigo-500 font-bold loading-dots">辨識中</p>
+                            </div>
                         </label>
                     </div>
                 </div>
 
-                <div class="bg-indigo-50 p-5 rounded-3xl space-y-4 mb-6">
+                <div class="bg-slate-50 p-6 rounded-[2.5rem] space-y-4 mb-8">
                     <div class="flex gap-4">
-                        <div class="flex-1"><label class="text-[10px] text-indigo-400 font-bold ml-1">熱量 (KCAL)</label><input type="number" id="inputKcal" class="w-full bg-white rounded-xl p-3 text-xl font-bold text-indigo-600 outline-none"></div>
-                        <div class="w-24"><label class="text-[10px] text-indigo-400 font-bold ml-1">份數</label><input type="number" id="inputQty" value="1" class="w-full bg-white rounded-xl p-3 text-center font-bold outline-none"></div>
+                        <div class="flex-1">
+                            <label class="text-[10px] text-slate-400 font-bold ml-2">熱量 (KCAL)</label>
+                            <input type="number" id="inputKcal" class="w-full bg-white rounded-2xl p-4 text-xl font-black text-indigo-600 outline-none shadow-sm">
+                        </div>
+                        <div class="w-24">
+                            <label class="text-[10px] text-slate-400 font-bold ml-2 text-center block">份數</label>
+                            <input type="number" id="inputQty" value="1" class="w-full bg-white rounded-2xl p-4 text-center font-bold outline-none shadow-sm">
+                        </div>
                     </div>
                     <div class="grid grid-cols-3 gap-3">
-                        <input type="number" id="inputCarb" class="bg-white rounded-xl p-2 text-center text-sm outline-none" placeholder="碳水">
-                        <input type="number" id="inputPro" class="bg-white rounded-xl p-2 text-center text-sm outline-none" placeholder="蛋白">
-                        <input type="number" id="inputFat" class="bg-white rounded-xl p-2 text-center text-sm outline-none" placeholder="脂肪">
+                        <div><label class="text-[8px] text-slate-400 font-bold block text-center">碳水</label><input type="number" id="inputCarb" class="w-full bg-white rounded-xl p-3 text-center text-sm shadow-sm outline-none"></div>
+                        <div><label class="text-[8px] text-slate-400 font-bold block text-center">蛋白</label><input type="number" id="inputPro" class="w-full bg-white rounded-xl p-3 text-center text-sm shadow-sm outline-none"></div>
+                        <div><label class="text-[8px] text-slate-400 font-bold block text-center">脂肪</label><input type="number" id="inputFat" class="w-full bg-white rounded-xl p-3 text-center text-sm shadow-sm outline-none"></div>
                     </div>
                 </div>
 
-                <button onclick="saveToRecord()" class="w-full bg-indigo-600 text-white py-4 rounded-2xl font-bold shadow-lg active:scale-95 transition-all mb-4">儲存紀錄</button>
-                <button onclick="toggleDrawer(false)" class="w-full text-slate-400 text-sm">取消</button>
+                <button onclick="saveToRecord()" class="w-full bg-indigo-600 text-white py-5 rounded-[2rem] font-bold shadow-xl shadow-indigo-100 active:scale-95 transition-all mb-4">儲存飲食紀錄</button>
+                <button onclick="toggleDrawer(false)" class="w-full text-slate-400 text-sm font-medium">下次再說</button>
             </div>
         </div>
 
-        <div id="userModal" class="fixed inset-0 z-[60] hidden flex items-center justify-center p-6 bg-black/70 backdrop-blur-sm">
-            <div class="bg-white w-full rounded-[2rem] p-8">
-                <h2 class="text-2xl font-bold mb-6">個人資訊設定</h2>
-                <div class="space-y-4">
-                    <input type="text" id="userName" class="w-full bg-gray-50 rounded-xl p-3 border" placeholder="姓名">
-                    <div class="grid grid-cols-2 gap-4">
-                        <select id="userGender" class="bg-gray-50 rounded-xl p-3 border"><option value="male">男</option><option value="female">女</option></select>
-                        <input type="number" id="userAge" class="bg-gray-50 rounded-xl p-3 border" placeholder="年齡">
-                    </div>
-                    <div class="grid grid-cols-2 gap-4">
-                        <input type="number" id="userHeight" class="bg-gray-50 rounded-xl p-3 border" placeholder="身高(cm)">
-                        <input type="number" id="userWeight" class="bg-gray-50 rounded-xl p-3 border" placeholder="體重(kg)">
-                    </div>
+        <div id="userModal" class="fixed inset-0 z-[60] hidden flex items-center justify-center p-6 bg-slate-900/60 backdrop-blur-md">
+            <div class="bg-white w-full rounded-[3rem] p-8 shadow-2xl overflow-hidden">
+                <div class="flex justify-between items-center mb-8">
+                    <h2 class="text-2xl font-black text-slate-800">基本資料</h2>
+                    <i class="fas fa-times text-slate-300" onclick="toggleUserModal(false)"></i>
                 </div>
-                <button onclick="saveUserInfo()" class="w-full bg-indigo-600 text-white py-4 rounded-2xl font-bold mt-8">更新預算</button>
-                <button onclick="toggleUserModal(false)" class="w-full text-gray-400 text-sm mt-4">關閉</button>
+                <div class="space-y-5">
+                    <div class="grid grid-cols-2 gap-4">
+                        <button onclick="setUserGender('male')" id="btnMale" class="p-4 rounded-2xl border-2 border-slate-100 font-bold transition-all">男生</button>
+                        <button onclick="setUserGender('female')" id="btnFemale" class="p-4 rounded-2xl border-2 border-slate-100 font-bold transition-all">女生</button>
+                    </div>
+                    <input type="number" id="userHeight" class="w-full bg-slate-50 p-4 rounded-2xl outline-none" placeholder="身高 (cm)">
+                    <input type="number" id="userWeight" class="w-full bg-slate-50 p-4 rounded-2xl outline-none" placeholder="體重 (kg)">
+                    <input type="number" id="userAge" class="w-full bg-slate-50 p-4 rounded-2xl outline-none" placeholder="年齡">
+                </div>
+                <button onclick="saveUserInfo()" class="w-full bg-slate-900 text-white py-5 rounded-[2rem] font-bold mt-8">更新 BMR 預算</button>
             </div>
         </div>
 
-        <nav class="fixed bottom-0 max-w-md w-full bg-white/90 backdrop-blur-md border-t p-4 flex justify-around items-center z-40">
+        <nav class="fixed bottom-0 max-w-md w-full bg-white/80 backdrop-blur-lg border-t p-5 flex justify-around items-center z-40">
             <i class="fas fa-home text-indigo-500 text-xl"></i>
             <div onclick="openAddDrawer()" class="w-14 h-14 bg-indigo-600 rounded-full -mt-12 border-4 border-white flex items-center justify-center text-white shadow-xl cursor-pointer active:scale-90 transition-all"><i class="fas fa-plus text-xl"></i></div>
-            <i onclick="toggleUserModal(true)" class="fas fa-cog text-gray-300 text-xl cursor-pointer"></i>
+            <i class="fas fa-chart-pie text-slate-300 text-xl"></i>
         </nav>
     </div>
 
@@ -131,7 +142,7 @@
 
         window.onload = () => { calculateAll(); document.getElementById('headerDate').innerText = new Date().toLocaleDateString('zh-TW', { month: 'long', day: 'numeric', weekday: 'long' }); };
 
-        // --- 圖片處理與 AI 辨識 ---
+        // --- OCR 辨識邏輯優化 ---
         async function handleImage(input, type) {
             if (!input.files || !input.files[0]) return;
             const reader = new FileReader();
@@ -143,7 +154,7 @@
                 } else {
                     currentOcrImg = data;
                     document.getElementById('ocrPreview').innerHTML = `<img src="${data}" class="w-full h-full object-cover">`;
-                    runOCR(data); // 啟動辨識
+                    runOCR(data);
                 }
             };
             reader.readAsDataURL(input.files[0]);
@@ -153,71 +164,53 @@
             const loader = document.getElementById('ocrLoading');
             loader.classList.remove('hidden');
             try {
-                // 使用 Tesseract.js 辨識中文字
                 const result = await Tesseract.recognize(imgData, 'chi_tra+eng');
-                const text = result.data.text;
-                console.log("辨識結果:", text);
+                const text = result.data.text.replace(/\s+/g, ''); // 去除所有空白以便比對
+                console.log("OCR Text:", text);
                 
-                // 智慧解析數值 (模擬針對味味麵截圖的邏輯)
-                parseNutrients(text);
+                // 強力解析函數
+                const extractValue = (keyword, targetId) => {
+                    const regex = new RegExp(`${keyword}[:：]?(\\d+\\.?\\d*)`);
+                    const match = text.match(regex);
+                    if (match && match[1]) {
+                        const el = document.getElementById(targetId);
+                        el.value = match[1];
+                        el.classList.add('input-highlight');
+                        setTimeout(() => el.classList.remove('input-highlight'), 1000);
+                        return true;
+                    }
+                    return false;
+                };
+
+                // 針對味味麵截圖的關鍵字設計
+                extractValue('熱量', 'inputKcal');
+                extractValue('蛋白質', 'inputPro');
+                extractValue('脂肪', 'inputFat');
+                extractValue('碳水化合物', 'inputCarb');
+
+                if (text.includes("味味麵")) {
+                    const nameField = document.getElementById('foodInput');
+                    nameField.value = "味味麵";
+                    nameField.classList.add('input-highlight');
+                }
             } catch (e) {
-                console.error("辨識失敗", e);
+                alert("辨識過程發生錯誤，請手動輸入");
             } finally {
                 loader.classList.add('hidden');
             }
         }
 
-        function parseNutrients(text) {
-            // 清理文字並尋找數值
-            const findValue = (keywords) => {
-                for (let key of keywords) {
-                    const regex = new RegExp(`${key}[^\\d]*(\\d+\\.?\\d*)`, 'i');
-                    const match = text.match(regex);
-                    if (match) return match[1];
-                }
-                return "";
-            };
-
-            const kcal = findValue(['熱量', 'Calories', 'Kcal']);
-            const pro = findValue(['蛋白質', 'Protein']);
-            const fat = findValue(['脂肪', 'Fat']);
-            const carb = findValue(['碳水', 'Carbohydrate']);
-
-            if (kcal) document.getElementById('inputKcal').value = kcal;
-            if (pro) document.getElementById('inputPro').value = pro;
-            if (fat) document.getElementById('inputFat').value = fat;
-            if (carb) document.getElementById('inputCarb').value = carb;
-            
-            // 嘗試帶入名稱
-            if (text.includes("味味麵")) document.getElementById('foodInput').value = "味味麵";
-        }
-
-        // --- 核心邏輯 (其餘維持並修復) ---
+        // --- UI & 數據處理 ---
         function openAddDrawer() {
             document.getElementById('editingId').value = "";
             document.getElementById('foodInput').value = "";
             document.getElementById('inputKcal').value = "";
-            document.getElementById('inputQty').value = "1";
-            document.getElementById('thumbPreview').innerHTML = `<i class="fas fa-image text-slate-300 text-2xl mb-1"></i><p class="text-[10px] text-slate-400">上傳封面</p>`;
-            document.getElementById('ocrPreview').innerHTML = `<i class="fas fa-barcode text-slate-300 text-2xl mb-1"></i><p class="text-[10px] text-slate-400">辨識成分</p>`;
+            document.getElementById('inputCarb').value = "";
+            document.getElementById('inputPro').value = "";
+            document.getElementById('inputFat').value = "";
+            document.getElementById('thumbPreview').innerHTML = `<i class="fas fa-camera text-slate-300 text-2xl mb-2"></i><p class="text-[10px] text-slate-400">上傳縮圖</p>`;
+            document.getElementById('ocrPreview').innerHTML = `<i class="fas fa-file-invoice text-slate-300 text-2xl mb-2"></i><p class="text-[10px] text-slate-400">掃描數據</p>`;
             currentThumb = null; currentOcrImg = null;
-            toggleDrawer(true);
-        }
-
-        function editRecord(id) {
-            const r = records.find(x => x.id === id);
-            if (!r) return;
-            document.getElementById('editingId').value = r.id;
-            document.getElementById('foodInput').value = r.name;
-            document.getElementById('inputKcal').value = r.kcalRaw;
-            document.getElementById('inputQty').value = r.qty;
-            document.getElementById('inputCarb').value = r.carbRaw;
-            document.getElementById('inputPro').value = r.proRaw;
-            document.getElementById('inputFat').value = r.fatRaw;
-            currentThumb = r.thumb;
-            currentOcrImg = r.ocrImg;
-            if(r.thumb) document.getElementById('thumbPreview').innerHTML = `<img src="${r.thumb}" class="w-full h-full object-cover">`;
-            if(r.ocrImg) document.getElementById('ocrPreview').innerHTML = `<img src="${r.ocrImg}" class="w-full h-full object-cover">`;
             toggleDrawer(true);
         }
 
@@ -228,9 +221,8 @@
             
             const data = {
                 id: id ? parseInt(id) : Date.now(),
-                name: document.getElementById('foodInput').value || "未命名食物",
-                qty: qty,
-                kcalRaw: kcalRaw,
+                name: document.getElementById('foodInput').value || "紀錄食品",
+                qty: qty, kcalRaw: kcalRaw,
                 carbRaw: parseFloat(document.getElementById('inputCarb').value) || 0,
                 proRaw: parseFloat(document.getElementById('inputPro').value) || 0,
                 fatRaw: parseFloat(document.getElementById('inputFat').value) || 0,
@@ -238,16 +230,11 @@
                 carb: (parseFloat(document.getElementById('inputCarb').value) || 0) * qty,
                 pro: (parseFloat(document.getElementById('inputPro').value) || 0) * qty,
                 fat: (parseFloat(document.getElementById('inputFat').value) || 0) * qty,
-                thumb: currentThumb,
-                ocrImg: currentOcrImg
+                thumb: currentThumb, ocrImg: currentOcrImg
             };
 
-            if (id) {
-                const idx = records.findIndex(x => x.id === parseInt(id));
-                records[idx] = data;
-            } else {
-                records.push(data);
-            }
+            if (id) records[records.findIndex(x => x.id === parseInt(id))] = data;
+            else records.push(data);
 
             localStorage.setItem('myCaloRecords', JSON.stringify(records));
             calculateAll();
@@ -256,42 +243,47 @@
 
         function renderList() {
             const list = document.getElementById('mealList');
-            list.innerHTML = records.length === 0 ? '<div class="text-center py-10 text-slate-300">尚未有攝取紀錄</div>' : '';
+            list.innerHTML = records.length === 0 ? '<div class="text-center py-10 text-slate-300 italic">今日尚未進食</div>' : '';
             records.slice().reverse().forEach(r => {
                 const div = document.createElement('div');
-                div.className = "bg-white p-3 rounded-[1.5rem] shadow-sm border border-slate-100 flex items-center gap-4 active:bg-slate-50 transition-colors";
+                div.className = "bg-white p-4 rounded-[2rem] border border-slate-100 flex items-center gap-4 active:bg-slate-50 transition-all";
                 div.innerHTML = `
-                    <img src="${r.thumb || 'https://via.placeholder.com/100?text=Food'}" class="food-thumb shadow-inner bg-slate-100">
+                    <img src="${r.thumb || 'https://via.placeholder.com/100?text=Food'}" class="w-14 h-14 rounded-2xl object-cover bg-slate-100">
                     <div class="flex-1" onclick="editRecord(${r.id})">
                         <h4 class="font-bold text-slate-800">${r.name}</h4>
-                        <p class="text-[10px] text-slate-400 font-medium">${r.qty} 份</p>
+                        <p class="text-[10px] text-slate-400 font-bold">${r.qty} 份</p>
                     </div>
-                    <div class="text-right"><span class="text-indigo-600 font-black text-lg">${Math.round(r.kcal)}</span><span class="text-[8px] text-slate-400 block uppercase">kcal</span></div>
+                    <div class="text-right">
+                        <span class="text-indigo-600 font-black text-xl">${Math.round(r.kcal)}</span>
+                        <span class="text-[8px] text-slate-400 block uppercase">kcal</span>
+                    </div>
                 `;
-                
                 let timer;
-                div.oncontextmenu = (e) => e.preventDefault();
-                div.addEventListener('touchstart', () => timer = setTimeout(() => { if(confirm("刪除這筆紀錄？")) { records = records.filter(x => x.id !== r.id); localStorage.setItem('myCaloRecords', JSON.stringify(records)); calculateAll(); } }, 800));
+                div.addEventListener('touchstart', () => timer = setTimeout(() => { if(confirm("刪除此紀錄？")) { records = records.filter(x => x.id !== r.id); localStorage.setItem('myCaloRecords', JSON.stringify(records)); calculateAll(); } }, 800));
                 div.addEventListener('touchend', () => clearTimeout(timer));
                 list.appendChild(div);
             });
         }
 
-        function toggleUserModal(show) { document.getElementById('userModal').classList.toggle('hidden', !show); if(show) loadUserFields(); }
-        function loadUserFields() {
-            document.getElementById('userName').value = userInfo.name;
-            document.getElementById('userHeight').value = userInfo.height;
-            document.getElementById('userWeight').value = userInfo.weight;
-            document.getElementById('userAge').value = userInfo.age;
+        // --- 個人預算與 BMR ---
+        function toggleUserModal(show) { 
+            document.getElementById('userModal').classList.toggle('hidden', !show); 
+            if(show) {
+                document.getElementById('userHeight').value = userInfo.height;
+                document.getElementById('userWeight').value = userInfo.weight;
+                document.getElementById('userAge').value = userInfo.age;
+                setUserGender(userInfo.gender);
+            }
+        }
+        function setUserGender(g) {
+            userInfo.gender = g;
+            document.getElementById('btnMale').className = g === 'male' ? 'p-4 rounded-2xl border-2 border-indigo-500 bg-indigo-50 font-bold text-indigo-600' : 'p-4 rounded-2xl border-2 border-slate-100 font-bold text-slate-400';
+            document.getElementById('btnFemale').className = g === 'female' ? 'p-4 rounded-2xl border-2 border-indigo-500 bg-indigo-50 font-bold text-indigo-600' : 'p-4 rounded-2xl border-2 border-slate-100 font-bold text-slate-400';
         }
         function saveUserInfo() {
-            userInfo = {
-                name: document.getElementById('userName').value,
-                gender: document.getElementById('userGender').value,
-                height: parseFloat(document.getElementById('userHeight').value) || 170,
-                weight: parseFloat(document.getElementById('userWeight').value) || 65,
-                age: parseInt(document.getElementById('userAge').value) || 25
-            };
+            userInfo.height = parseFloat(document.getElementById('userHeight').value) || 170;
+            userInfo.weight = parseFloat(document.getElementById('userWeight').value) || 65;
+            userInfo.age = parseInt(document.getElementById('userAge').value) || 25;
             userInfo.bmr = Math.round(userInfo.gender === 'male' 
                 ? (10 * userInfo.weight + 6.25 * userInfo.height - 5 * userInfo.age + 5)
                 : (10 * userInfo.weight + 6.25 * userInfo.height - 5 * userInfo.age - 161));
@@ -313,6 +305,21 @@
             const d = document.getElementById('searchDrawer');
             if(show) { d.classList.remove('hidden'); setTimeout(() => document.getElementById('drawerContent').classList.add('drawer-active'), 10); }
             else { document.getElementById('drawerContent').classList.remove('drawer-active'); setTimeout(() => d.classList.add('hidden'), 500); }
+        }
+        function editRecord(id) {
+            const r = records.find(x => x.id === id);
+            if (!r) return;
+            document.getElementById('editingId').value = r.id;
+            document.getElementById('foodInput').value = r.name;
+            document.getElementById('inputKcal').value = r.kcalRaw;
+            document.getElementById('inputQty').value = r.qty;
+            document.getElementById('inputCarb').value = r.carbRaw;
+            document.getElementById('inputPro').value = r.proRaw;
+            document.getElementById('inputFat').value = r.fatRaw;
+            currentThumb = r.thumb; currentOcrImg = r.ocrImg;
+            if(r.thumb) document.getElementById('thumbPreview').innerHTML = `<img src="${r.thumb}" class="w-full h-full object-cover">`;
+            if(r.ocrImg) document.getElementById('ocrPreview').innerHTML = `<img src="${r.ocrImg}" class="w-full h-full object-cover">`;
+            toggleDrawer(true);
         }
     </script>
 </body>
