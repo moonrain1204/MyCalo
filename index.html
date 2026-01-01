@@ -3,30 +3,35 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MyCalo v1.0.8 - 視覺化與再次編輯</title>
+    <title>MyCalo v1.1.0 - AI 辨識與雙圖紀錄</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src='https://unpkg.com/tesseract.js@v2.1.0/dist/tesseract.min.js'></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
         ::-webkit-scrollbar { display: none; }
         .drawer-active { transform: translateY(0) !important; }
-        .modal-bg { background: rgba(0,0,0,0.7); backdrop-filter: blur(4px); }
-        .food-thumb { width: 50px; height: 50px; object-fit: cover; border-radius: 12px; background: #f1f5f9; }
+        .no-select { -webkit-touch-callout: none; user-select: none; }
+        .food-thumb { width: 56px; height: 56px; object-fit: cover; border-radius: 14px; }
+        .loading-ring { border: 3px solid #f3f3f3; border-top: 3px solid #6366f1; border-radius: 50%; width: 20px; height: 20px; animation: spin 1s linear infinite; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
     </style>
 </head>
-<body class="bg-slate-50 font-sans text-slate-900 select-none">
+<body class="bg-slate-50 font-sans text-slate-900 no-select">
 
     <div id="app" class="max-w-md mx-auto min-h-screen bg-white shadow-2xl relative pb-32">
         
         <header class="p-8 bg-gradient-to-br from-indigo-600 to-blue-500 text-white rounded-b-[2.5rem] shadow-xl">
             <div class="flex justify-between items-center mb-6">
-                <div class="text-sm font-light opacity-90" id="headerDate">2026年1月1日</div>
-                <button onclick="toggleUserModal(true)" class="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center"><i class="fas fa-user-cog"></i></button>
+                <div class="text-sm font-light opacity-90" id="headerDate">載入中...</div>
+                <button onclick="toggleUserModal(true)" class="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center active:scale-90 transition-transform">
+                    <i class="fas fa-user-circle text-xl"></i>
+                </button>
             </div>
             <div class="flex items-center justify-around">
                 <div class="relative">
                     <svg class="w-32 h-32 -rotate-90">
                         <circle cx="64" cy="64" r="58" stroke="rgba(255,255,255,0.2)" stroke-width="8" fill="transparent" />
-                        <circle id="progressCircle" cx="64" cy="64" r="58" stroke="white" stroke-width="8" fill="transparent" stroke-dasharray="364" stroke-dashoffset="364" stroke-linecap="round" class="transition-all duration-700" />
+                        <circle id="progressCircle" cx="64" cy="64" r="58" stroke="white" stroke-width="8" fill="transparent" stroke-dasharray="364" stroke-dashoffset="364" stroke-linecap="round" class="transition-all duration-1000" />
                     </svg>
                     <div class="absolute inset-0 flex flex-col items-center justify-center">
                         <span id="displayKcal" class="text-3xl font-bold">0</span>
@@ -34,7 +39,7 @@
                     </div>
                 </div>
                 <div class="space-y-1 text-sm">
-                    <div class="text-[10px] opacity-70">預算: <span id="budgetDisplay">1500</span> kcal</div>
+                    <div class="text-[10px] opacity-70 mb-1">預算: <span id="budgetDisplay">1500</span> kcal</div>
                     <div class="w-32 flex justify-between border-b border-white/10"><span>碳水</span><span id="statCarb">0g</span></div>
                     <div class="w-32 flex justify-between border-b border-white/10"><span>蛋白</span><span id="statPro">0g</span></div>
                     <div class="w-32 flex justify-between"><span>脂肪</span><span id="statFat">0g</span></div>
@@ -43,31 +48,42 @@
         </header>
 
         <main class="p-6 space-y-4">
-            <h3 class="text-xl font-bold text-gray-800">用餐紀錄</h3>
+            <div class="flex justify-between items-end">
+                <h3 class="text-xl font-bold text-gray-800">用餐紀錄</h3>
+                <span class="text-[10px] text-gray-400">點擊編輯，長按刪除</span>
+            </div>
             <div id="mealList" class="space-y-3"></div>
         </main>
 
-        <div id="searchDrawer" class="fixed inset-0 bg-black/60 z-50 hidden backdrop-blur-sm transition-opacity">
+        <div id="searchDrawer" class="fixed inset-0 bg-black/60 z-50 hidden backdrop-blur-sm">
             <div id="drawerContent" class="absolute bottom-0 w-full max-w-md bg-white rounded-t-[2.5rem] p-6 max-h-[95vh] overflow-y-auto transform translate-y-full transition-transform duration-500">
                 <div class="w-12 h-1.5 bg-gray-200 rounded-full mx-auto mb-6"></div>
-                <h2 id="drawerTitle" class="text-2xl font-bold mb-4 text-slate-800">紀錄食品內容</h2>
                 
                 <input type="hidden" id="editingId">
-                <input type="text" id="foodInput" class="w-full bg-gray-100 rounded-2xl p-4 mb-4 outline-none border-2 border-transparent focus:border-indigo-400" placeholder="點此輸入名稱 (如: 味味麵)">
-                
-                <div class="grid grid-cols-2 gap-3 mb-4">
-                    <button onclick="searchGoogle()" class="bg-white border p-3 rounded-xl flex items-center justify-center shadow-sm"><img src="https://www.google.com/favicon.ico" class="w-4 h-4 mr-2"> Google</button>
-                    <label class="bg-white border p-3 rounded-xl flex items-center justify-center shadow-sm cursor-pointer"><i class="fas fa-camera mr-2 text-indigo-500"></i> 上傳截圖<input type="file" id="screenshotUpload" class="hidden" accept="image/*" onchange="processImage(this)"></label>
-                </div>
+                <input type="text" id="foodInput" class="w-full bg-gray-100 rounded-2xl p-4 mb-6 text-lg font-bold outline-none border-2 border-transparent focus:border-indigo-400" placeholder="食品名稱 (如: 味味麵)">
 
-                <div id="imagePreview" class="w-full h-32 bg-slate-50 rounded-2xl mb-4 flex items-center justify-center overflow-hidden border-2 border-dashed border-slate-200">
-                    <span class="text-slate-400 text-sm">尚未上傳圖片</span>
+                <div class="grid grid-cols-2 gap-4 mb-6">
+                    <div class="space-y-2">
+                        <label class="text-xs font-bold text-slate-400 ml-1">1. 食品縮圖</label>
+                        <label class="block h-32 bg-slate-50 rounded-2xl border-2 border-dashed border-slate-200 flex items-center justify-center overflow-hidden cursor-pointer relative">
+                            <input type="file" class="hidden" accept="image/*" onchange="handleImage(this, 'thumb')">
+                            <div id="thumbPreview" class="text-center p-2"><i class="fas fa-image text-slate-300 text-2xl mb-1"></i><p class="text-[10px] text-slate-400">上傳封面</p></div>
+                        </label>
+                    </div>
+                    <div class="space-y-2">
+                        <label class="text-xs font-bold text-slate-400 ml-1">2. 營養成分表</label>
+                        <label class="block h-32 bg-slate-50 rounded-2xl border-2 border-dashed border-slate-200 flex items-center justify-center overflow-hidden cursor-pointer relative">
+                            <input type="file" class="hidden" accept="image/*" onchange="handleImage(this, 'ocr')">
+                            <div id="ocrPreview" class="text-center p-2"><i class="fas fa-barcode text-slate-300 text-2xl mb-1"></i><p class="text-[10px] text-slate-400">辨識成分</p></div>
+                            <div id="ocrLoading" class="hidden absolute inset-0 bg-white/80 flex items-center justify-center"><div class="loading-ring"></div></div>
+                        </label>
+                    </div>
                 </div>
 
                 <div class="bg-indigo-50 p-5 rounded-3xl space-y-4 mb-6">
                     <div class="flex gap-4">
-                        <div class="flex-1"><label class="text-[10px] text-indigo-400 font-bold ml-1 uppercase">熱量 (Kcal)</label><input type="number" id="inputKcal" class="w-full bg-white rounded-xl p-3 text-xl font-bold text-indigo-600 outline-none"></div>
-                        <div class="w-24"><label class="text-[10px] text-indigo-400 font-bold ml-1 uppercase">份數</label><input type="number" id="inputQty" value="1" class="w-full bg-white rounded-xl p-3 text-center font-bold outline-none"></div>
+                        <div class="flex-1"><label class="text-[10px] text-indigo-400 font-bold ml-1">熱量 (KCAL)</label><input type="number" id="inputKcal" class="w-full bg-white rounded-xl p-3 text-xl font-bold text-indigo-600 outline-none"></div>
+                        <div class="w-24"><label class="text-[10px] text-indigo-400 font-bold ml-1">份數</label><input type="number" id="inputQty" value="1" class="w-full bg-white rounded-xl p-3 text-center font-bold outline-none"></div>
                     </div>
                     <div class="grid grid-cols-3 gap-3">
                         <input type="number" id="inputCarb" class="bg-white rounded-xl p-2 text-center text-sm outline-none" placeholder="碳水">
@@ -76,17 +92,33 @@
                     </div>
                 </div>
 
-                <button onclick="saveToRecord()" class="w-full bg-indigo-600 text-white py-4 rounded-2xl font-bold shadow-lg shadow-indigo-200 active:scale-95 transition-all mb-3">儲存紀錄</button>
+                <button onclick="saveToRecord()" class="w-full bg-indigo-600 text-white py-4 rounded-2xl font-bold shadow-lg active:scale-95 transition-all mb-4">儲存紀錄</button>
                 <button onclick="toggleDrawer(false)" class="w-full text-slate-400 text-sm">取消</button>
             </div>
         </div>
 
-        <div id="userModal" class="fixed inset-0 z-[60] hidden modal-bg flex items-center justify-center p-6">...</div>
+        <div id="userModal" class="fixed inset-0 z-[60] hidden flex items-center justify-center p-6 bg-black/70 backdrop-blur-sm">
+            <div class="bg-white w-full rounded-[2rem] p-8">
+                <h2 class="text-2xl font-bold mb-6">個人資訊設定</h2>
+                <div class="space-y-4">
+                    <input type="text" id="userName" class="w-full bg-gray-50 rounded-xl p-3 border" placeholder="姓名">
+                    <div class="grid grid-cols-2 gap-4">
+                        <select id="userGender" class="bg-gray-50 rounded-xl p-3 border"><option value="male">男</option><option value="female">女</option></select>
+                        <input type="number" id="userAge" class="bg-gray-50 rounded-xl p-3 border" placeholder="年齡">
+                    </div>
+                    <div class="grid grid-cols-2 gap-4">
+                        <input type="number" id="userHeight" class="bg-gray-50 rounded-xl p-3 border" placeholder="身高(cm)">
+                        <input type="number" id="userWeight" class="bg-gray-50 rounded-xl p-3 border" placeholder="體重(kg)">
+                    </div>
+                </div>
+                <button onclick="saveUserInfo()" class="w-full bg-indigo-600 text-white py-4 rounded-2xl font-bold mt-8">更新預算</button>
+                <button onclick="toggleUserModal(false)" class="w-full text-gray-400 text-sm mt-4">關閉</button>
+            </div>
+        </div>
 
-        <div class="fixed bottom-1 left-1 opacity-20 text-[8px] z-0">v1.0.8-beta</div>
-        <nav class="fixed bottom-0 max-w-md w-full bg-white/90 backdrop-blur-md border-t border-gray-100 p-4 flex justify-around items-center z-40">
+        <nav class="fixed bottom-0 max-w-md w-full bg-white/90 backdrop-blur-md border-t p-4 flex justify-around items-center z-40">
             <i class="fas fa-home text-indigo-500 text-xl"></i>
-            <div onclick="openAddDrawer()" class="w-12 h-12 bg-indigo-500 rounded-full -mt-10 border-4 border-white flex items-center justify-center text-white shadow-lg cursor-pointer"><i class="fas fa-plus"></i></div>
+            <div onclick="openAddDrawer()" class="w-14 h-14 bg-indigo-600 rounded-full -mt-12 border-4 border-white flex items-center justify-center text-white shadow-xl cursor-pointer active:scale-90 transition-all"><i class="fas fa-plus text-xl"></i></div>
             <i onclick="toggleUserModal(true)" class="fas fa-cog text-gray-300 text-xl cursor-pointer"></i>
         </nav>
     </div>
@@ -94,83 +126,127 @@
     <script>
         let records = JSON.parse(localStorage.getItem('myCaloRecords')) || [];
         let userInfo = JSON.parse(localStorage.getItem('myCaloUserInfo')) || { name: '', gender: 'male', height: 170, weight: 65, age: 25, bmr: 1500 };
-        let currentImageData = null;
+        let currentThumb = null;
+        let currentOcrImg = null;
 
-        window.onload = () => {
-            calculateAll();
-            document.getElementById('headerDate').innerText = new Date().toLocaleDateString('zh-TW', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'long' });
-        };
+        window.onload = () => { calculateAll(); document.getElementById('headerDate').innerText = new Date().toLocaleDateString('zh-TW', { month: 'long', day: 'numeric', weekday: 'long' }); };
 
-        // --- 圖片處理 ---
-        function processImage(input) {
-            if (input.files && input.files[0]) {
-                const reader = new FileReader();
-                reader.onload = function(e) {
-                    currentImageData = e.target.result;
-                    document.getElementById('imagePreview').innerHTML = `<img src="${currentImageData}" class="w-full h-full object-cover">`;
-                };
-                reader.readAsDataURL(input.files[0]);
+        // --- 圖片處理與 AI 辨識 ---
+        async function handleImage(input, type) {
+            if (!input.files || !input.files[0]) return;
+            const reader = new FileReader();
+            reader.onload = async (e) => {
+                const data = e.target.result;
+                if (type === 'thumb') {
+                    currentThumb = data;
+                    document.getElementById('thumbPreview').innerHTML = `<img src="${data}" class="w-full h-full object-cover">`;
+                } else {
+                    currentOcrImg = data;
+                    document.getElementById('ocrPreview').innerHTML = `<img src="${data}" class="w-full h-full object-cover">`;
+                    runOCR(data); // 啟動辨識
+                }
+            };
+            reader.readAsDataURL(input.files[0]);
+        }
+
+        async function runOCR(imgData) {
+            const loader = document.getElementById('ocrLoading');
+            loader.classList.remove('hidden');
+            try {
+                // 使用 Tesseract.js 辨識中文字
+                const result = await Tesseract.recognize(imgData, 'chi_tra+eng');
+                const text = result.data.text;
+                console.log("辨識結果:", text);
+                
+                // 智慧解析數值 (模擬針對味味麵截圖的邏輯)
+                parseNutrients(text);
+            } catch (e) {
+                console.error("辨識失敗", e);
+            } finally {
+                loader.classList.add('hidden');
             }
         }
 
-        // --- 紀錄管理 ---
+        function parseNutrients(text) {
+            // 清理文字並尋找數值
+            const findValue = (keywords) => {
+                for (let key of keywords) {
+                    const regex = new RegExp(`${key}[^\\d]*(\\d+\\.?\\d*)`, 'i');
+                    const match = text.match(regex);
+                    if (match) return match[1];
+                }
+                return "";
+            };
+
+            const kcal = findValue(['熱量', 'Calories', 'Kcal']);
+            const pro = findValue(['蛋白質', 'Protein']);
+            const fat = findValue(['脂肪', 'Fat']);
+            const carb = findValue(['碳水', 'Carbohydrate']);
+
+            if (kcal) document.getElementById('inputKcal').value = kcal;
+            if (pro) document.getElementById('inputPro').value = pro;
+            if (fat) document.getElementById('inputFat').value = fat;
+            if (carb) document.getElementById('inputCarb').value = carb;
+            
+            // 嘗試帶入名稱
+            if (text.includes("味味麵")) document.getElementById('foodInput').value = "味味麵";
+        }
+
+        // --- 核心邏輯 (其餘維持並修復) ---
         function openAddDrawer() {
             document.getElementById('editingId').value = "";
-            document.getElementById('drawerTitle').innerText = "紀錄食品內容";
             document.getElementById('foodInput').value = "";
             document.getElementById('inputKcal').value = "";
             document.getElementById('inputQty').value = "1";
-            document.getElementById('imagePreview').innerHTML = `<span class="text-slate-400 text-sm">尚未上傳圖片</span>`;
-            currentImageData = null;
+            document.getElementById('thumbPreview').innerHTML = `<i class="fas fa-image text-slate-300 text-2xl mb-1"></i><p class="text-[10px] text-slate-400">上傳封面</p>`;
+            document.getElementById('ocrPreview').innerHTML = `<i class="fas fa-barcode text-slate-300 text-2xl mb-1"></i><p class="text-[10px] text-slate-400">辨識成分</p>`;
+            currentThumb = null; currentOcrImg = null;
             toggleDrawer(true);
         }
 
         function editRecord(id) {
-            const record = records.find(r => r.id === id);
-            if (!record) return;
-            document.getElementById('editingId').value = record.id;
-            document.getElementById('drawerTitle').innerText = "編輯紀錄內容";
-            document.getElementById('foodInput').value = record.name;
-            document.getElementById('inputKcal').value = record.kcalRaw; // 原始單包數值
-            document.getElementById('inputQty').value = record.qty;
-            document.getElementById('inputCarb').value = record.carbRaw;
-            document.getElementById('inputPro').value = record.proRaw;
-            document.getElementById('inputFat').value = record.fatRaw;
-            currentImageData = record.img || null;
-            
-            if(currentImageData) {
-                document.getElementById('imagePreview').innerHTML = `<img src="${currentImageData}" class="w-full h-full object-cover">`;
-            } else {
-                document.getElementById('imagePreview').innerHTML = `<span class="text-slate-400 text-sm">尚未上傳圖片</span>`;
-            }
+            const r = records.find(x => x.id === id);
+            if (!r) return;
+            document.getElementById('editingId').value = r.id;
+            document.getElementById('foodInput').value = r.name;
+            document.getElementById('inputKcal').value = r.kcalRaw;
+            document.getElementById('inputQty').value = r.qty;
+            document.getElementById('inputCarb').value = r.carbRaw;
+            document.getElementById('inputPro').value = r.proRaw;
+            document.getElementById('inputFat').value = r.fatRaw;
+            currentThumb = r.thumb;
+            currentOcrImg = r.ocrImg;
+            if(r.thumb) document.getElementById('thumbPreview').innerHTML = `<img src="${r.thumb}" class="w-full h-full object-cover">`;
+            if(r.ocrImg) document.getElementById('ocrPreview').innerHTML = `<img src="${r.ocrImg}" class="w-full h-full object-cover">`;
             toggleDrawer(true);
         }
 
         function saveToRecord() {
-            const editId = document.getElementById('editingId').value;
+            const id = document.getElementById('editingId').value;
             const qty = parseFloat(document.getElementById('inputQty').value) || 1;
             const kcalRaw = parseFloat(document.getElementById('inputKcal').value) || 0;
-            const carbRaw = parseFloat(document.getElementById('inputCarb').value) || 0;
-            const proRaw = parseFloat(document.getElementById('inputPro').value) || 0;
-            const fatRaw = parseFloat(document.getElementById('inputFat').value) || 0;
-
-            const recordData = {
-                id: editId ? parseInt(editId) : Date.now(),
-                name: document.getElementById('foodInput').value || "紀錄食品",
+            
+            const data = {
+                id: id ? parseInt(id) : Date.now(),
+                name: document.getElementById('foodInput').value || "未命名食物",
                 qty: qty,
-                kcalRaw: kcalRaw, carbRaw: carbRaw, proRaw: proRaw, fatRaw: fatRaw,
+                kcalRaw: kcalRaw,
+                carbRaw: parseFloat(document.getElementById('inputCarb').value) || 0,
+                proRaw: parseFloat(document.getElementById('inputPro').value) || 0,
+                fatRaw: parseFloat(document.getElementById('inputFat').value) || 0,
                 kcal: kcalRaw * qty,
-                carb: carbRaw * qty,
-                pro: proRaw * qty,
-                fat: fatRaw * qty,
-                img: currentImageData
+                carb: (parseFloat(document.getElementById('inputCarb').value) || 0) * qty,
+                pro: (parseFloat(document.getElementById('inputPro').value) || 0) * qty,
+                fat: (parseFloat(document.getElementById('inputFat').value) || 0) * qty,
+                thumb: currentThumb,
+                ocrImg: currentOcrImg
             };
 
-            if (editId) {
-                const idx = records.findIndex(r => r.id === parseInt(editId));
-                records[idx] = recordData;
+            if (id) {
+                const idx = records.findIndex(x => x.id === parseInt(id));
+                records[idx] = data;
             } else {
-                records.push(recordData);
+                records.push(data);
             }
 
             localStorage.setItem('myCaloRecords', JSON.stringify(records));
@@ -180,56 +256,64 @@
 
         function renderList() {
             const list = document.getElementById('mealList');
-            list.innerHTML = records.length === 0 ? '<div class="text-center py-10 text-gray-400 italic text-sm">尚未有攝取紀錄</div>' : '';
-            
-            records.slice().reverse().forEach(record => {
-                const item = document.createElement('div');
-                item.className = "bg-white p-3 rounded-2xl shadow-sm border border-gray-100 flex items-center gap-4 transition-all active:bg-slate-50";
-                
-                // 圖片部分
-                const imgHTML = record.img 
-                    ? `<img src="${record.img}" class="food-thumb">` 
-                    : `<div class="food-thumb flex items-center justify-center bg-slate-100 text-slate-300"><i class="fas fa-utensils"></i></div>`;
-                
-                item.innerHTML = `
-                    ${imgHTML}
-                    <div class="flex-1" onclick="editRecord(${record.id})">
-                        <div class="font-bold text-slate-700 leading-tight">${record.name}</div>
-                        <div class="text-[10px] text-slate-400 mt-1">${record.qty} 份 | 點擊編輯</div>
+            list.innerHTML = records.length === 0 ? '<div class="text-center py-10 text-slate-300">尚未有攝取紀錄</div>' : '';
+            records.slice().reverse().forEach(r => {
+                const div = document.createElement('div');
+                div.className = "bg-white p-3 rounded-[1.5rem] shadow-sm border border-slate-100 flex items-center gap-4 active:bg-slate-50 transition-colors";
+                div.innerHTML = `
+                    <img src="${r.thumb || 'https://via.placeholder.com/100?text=Food'}" class="food-thumb shadow-inner bg-slate-100">
+                    <div class="flex-1" onclick="editRecord(${r.id})">
+                        <h4 class="font-bold text-slate-800">${r.name}</h4>
+                        <p class="text-[10px] text-slate-400 font-medium">${r.qty} 份</p>
                     </div>
-                    <div class="text-right">
-                        <div class="text-indigo-600 font-black">${Math.round(record.kcal)}</div>
-                        <div class="text-[8px] text-slate-400 uppercase">kcal</div>
-                    </div>
+                    <div class="text-right"><span class="text-indigo-600 font-black text-lg">${Math.round(r.kcal)}</span><span class="text-[8px] text-slate-400 block uppercase">kcal</span></div>
                 `;
                 
-                // 長按刪除邏輯
                 let timer;
-                item.addEventListener('touchstart', () => timer = setTimeout(() => deleteRecord(record.id), 800));
-                item.addEventListener('touchend', () => clearTimeout(timer));
-                list.appendChild(item);
+                div.oncontextmenu = (e) => e.preventDefault();
+                div.addEventListener('touchstart', () => timer = setTimeout(() => { if(confirm("刪除這筆紀錄？")) { records = records.filter(x => x.id !== r.id); localStorage.setItem('myCaloRecords', JSON.stringify(records)); calculateAll(); } }, 800));
+                div.addEventListener('touchend', () => clearTimeout(timer));
+                list.appendChild(div);
             });
         }
 
-        // --- 其餘輔助函數 (BMR計算、Drawer切換、搜尋) 與 v1.0.7 相同 ---
-        function deleteRecord(id) { if(confirm("確定刪除此紀錄？")) { records = records.filter(r => r.id !== id); localStorage.setItem('myCaloRecords', JSON.stringify(records)); calculateAll(); } }
-        function calculateAll() { 
-            const stats = records.reduce((acc, r) => ({ kcal: acc.kcal + r.kcal, carb: acc.carb + r.carb, pro: acc.pro + r.pro, fat: acc.fat + r.fat }), { kcal: 0, carb: 0, pro: 0, fat: 0 });
-            document.getElementById('displayKcal').innerText = Math.round(stats.kcal);
-            document.getElementById('statCarb').innerText = Math.round(stats.carb) + 'g';
-            document.getElementById('statPro').innerText = Math.round(stats.pro) + 'g';
-            document.getElementById('statFat').innerText = Math.round(stats.fat) + 'g';
+        function toggleUserModal(show) { document.getElementById('userModal').classList.toggle('hidden', !show); if(show) loadUserFields(); }
+        function loadUserFields() {
+            document.getElementById('userName').value = userInfo.name;
+            document.getElementById('userHeight').value = userInfo.height;
+            document.getElementById('userWeight').value = userInfo.weight;
+            document.getElementById('userAge').value = userInfo.age;
+        }
+        function saveUserInfo() {
+            userInfo = {
+                name: document.getElementById('userName').value,
+                gender: document.getElementById('userGender').value,
+                height: parseFloat(document.getElementById('userHeight').value) || 170,
+                weight: parseFloat(document.getElementById('userWeight').value) || 65,
+                age: parseInt(document.getElementById('userAge').value) || 25
+            };
+            userInfo.bmr = Math.round(userInfo.gender === 'male' 
+                ? (10 * userInfo.weight + 6.25 * userInfo.height - 5 * userInfo.age + 5)
+                : (10 * userInfo.weight + 6.25 * userInfo.height - 5 * userInfo.age - 161));
+            localStorage.setItem('myCaloUserInfo', JSON.stringify(userInfo));
+            calculateAll();
+            toggleUserModal(false);
+        }
+        function calculateAll() {
+            const s = records.reduce((a, b) => ({ kcal: a.kcal+b.kcal, carb: a.carb+b.carb, pro: a.pro+b.pro, fat: a.fat+b.fat }), { kcal: 0, carb: 0, pro: 0, fat: 0 });
+            document.getElementById('displayKcal').innerText = Math.round(s.kcal);
+            document.getElementById('statCarb').innerText = Math.round(s.carb) + 'g';
+            document.getElementById('statPro').innerText = Math.round(s.pro) + 'g';
+            document.getElementById('statFat').innerText = Math.round(s.fat) + 'g';
             document.getElementById('budgetDisplay').innerText = userInfo.bmr;
-            const ratio = Math.min(stats.kcal / userInfo.bmr, 1);
-            document.getElementById('progressCircle').style.strokeDashoffset = 364 - (ratio * 364);
+            document.getElementById('progressCircle').style.strokeDashoffset = 364 - (Math.min(s.kcal / userInfo.bmr, 1) * 364);
             renderList();
         }
         function toggleDrawer(show) {
-            const drawer = document.getElementById('searchDrawer');
-            if (show) { drawer.classList.remove('hidden'); setTimeout(() => document.getElementById('drawerContent').classList.add('drawer-active'), 10); }
-            else { document.getElementById('drawerContent').classList.remove('drawer-active'); setTimeout(() => drawer.classList.add('hidden'), 500); }
+            const d = document.getElementById('searchDrawer');
+            if(show) { d.classList.remove('hidden'); setTimeout(() => document.getElementById('drawerContent').classList.add('drawer-active'), 10); }
+            else { document.getElementById('drawerContent').classList.remove('drawer-active'); setTimeout(() => d.classList.add('hidden'), 500); }
         }
-        function searchGoogle() { window.open(`https://www.google.com/search?q=${encodeURIComponent(document.getElementById('foodInput').value || '食品' + ' 熱量 營養成分')}`, '_blank'); }
     </script>
 </body>
 </html>
