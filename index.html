@@ -3,114 +3,128 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>我的全聯飲食助手</title>
+    <title>MyCalo - 智慧飲食助手</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        /* 模擬手機 App 的隱藏滾動條 */
+        ::-webkit-scrollbar { display: none; }
+    </style>
 </head>
-<body class="bg-slate-50">
+<body class="bg-slate-50 font-sans">
 
-    <div id="app" class="max-w-md mx-auto min-h-screen bg-white shadow-lg pb-24">
-        <header class="p-6 bg-gradient-to-br from-blue-500 to-blue-600 text-white rounded-b-3xl shadow-lg">
-            <div class="flex justify-between items-center mb-4">
-                <span class="text-sm opacity-80">2026年1月1日 星期四</span>
-                <i class="fas fa-user-circle text-2xl"></i>
+    <div id="app" class="max-w-md mx-auto min-h-screen bg-white shadow-2xl relative pb-24">
+        
+        <header class="p-8 bg-gradient-to-br from-indigo-600 to-blue-500 text-white rounded-b-[2.5rem] shadow-xl">
+            <div class="flex justify-between items-center mb-6">
+                <div class="text-sm font-light opacity-90" id="headerDate">2026年1月1日 星期四</div>
+                <div class="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center">
+                    <i class="fas fa-user text-lg"></i>
+                </div>
             </div>
-            <div class="text-center">
-                <h1 class="text-4xl font-bold mb-1">1138 <span class="text-sm font-normal">剩餘 kcal</span></h1>
-                <div class="w-full bg-blue-400 rounded-full h-1.5 mt-2">
-                    <div class="bg-white h-1.5 rounded-full" style="width: 45%"></div>
+            
+            <div class="flex items-center justify-around">
+                <div class="text-center">
+                    <div class="relative w-32 h-32 flex items-center justify-center">
+                        <svg class="absolute w-full h-full -rotate-90">
+                            <circle cx="64" cy="64" r="58" stroke="rgba(255,255,255,0.2)" stroke-width="8" fill="transparent" />
+                            <circle cx="64" cy="64" r="58" stroke="white" stroke-width="8" fill="transparent" 
+                                stroke-dasharray="364" stroke-dashoffset="100" stroke-linecap="round" />
+                        </svg>
+                        <div class="text-center">
+                            <span class="text-3xl font-bold">1138</span>
+                            <p class="text-[10px] opacity-80 uppercase tracking-wider">剩餘 kcal</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="space-y-3 text-sm">
+                    <div class="flex justify-between w-24"><span>碳水</span><span class="font-bold">58g</span></div>
+                    <div class="flex justify-between w-24"><span>蛋白質</span><span class="font-bold">42g</span></div>
+                    <div class="flex justify-between w-24"><span>脂肪</span><span class="font-bold">15g</span></div>
                 </div>
             </div>
         </header>
 
-        <main class="p-4 space-y-6">
-            <section class="meal-slot">
-                <div class="flex justify-between items-end mb-3">
-                    <h3 class="text-xl font-bold text-gray-700">午餐</h3>
-                    <span class="text-sm text-gray-400">建議：500-700 kcal</span>
+        <main class="p-6 space-y-8">
+            <section>
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-2xl font-bold text-gray-800">午餐</h3>
+                    <span class="bg-blue-100 text-blue-600 text-xs px-3 py-1 rounded-full font-bold">11:30 AM</span>
                 </div>
                 
-                <div class="border-2 border-dashed border-gray-200 rounded-2xl p-4 flex flex-col items-center justify-center bg-gray-50 hover:bg-gray-100 transition cursor-pointer" onclick="openSearch('泡麵')">
-                    <div class="bg-blue-100 text-blue-600 w-10 h-10 rounded-full flex items-center justify-center mb-2">
-                        <i class="fas fa-plus"></i>
+                <div onclick="openSearchDrawer()" class="group border-2 border-dashed border-gray-200 rounded-3xl p-8 flex flex-col items-center justify-center bg-gray-50 hover:bg-white hover:border-blue-400 transition-all cursor-pointer">
+                    <div class="bg-white text-blue-500 w-12 h-12 rounded-2xl shadow-sm flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
+                        <i class="fas fa-plus text-xl"></i>
                     </div>
-                    <p class="text-gray-500 font-medium">新增食物紀錄</p>
-                    <p class="text-xs text-gray-400 mt-1">點擊搜尋全聯品項</p>
-                </div>
-            </section>
-
-            <section class="meal-slot">
-                <div class="flex justify-between items-center mb-3">
-                    <h3 class="text-xl font-bold text-gray-700">早餐</h3>
-                    <span class="text-blue-500 font-bold">11:30 AM</span>
-                </div>
-                <div class="bg-white border border-gray-100 shadow-sm rounded-2xl p-4 flex items-center">
-                    <img src="https://via.placeholder.com/50" class="rounded-lg mr-4" alt="食物圖片">
-                    <div class="flex-1">
-                        <h4 class="font-bold text-gray-800">維力炸醬麵</h4>
-                        <p class="text-sm text-gray-400">1 份 · 481 kcal</p>
-                    </div>
-                    <i class="fas fa-chevron-right text-gray-300"></i>
+                    <p class="text-gray-500 font-bold">新增食物紀錄</p>
+                    <p class="text-xs text-gray-400 mt-1">搜尋熱量資訊並記錄</p>
                 </div>
             </section>
         </main>
 
-        <nav class="fixed bottom-0 max-w-md w-full bg-white border-t border-gray-100 px-8 py-3 flex justify-between items-center text-gray-400">
-            <i class="fas fa-home text-blue-500 text-xl"></i>
-            <i class="fas fa-barcode text-xl" onclick="alert('啟動相機掃描條碼')"></i>
-            <div class="bg-blue-500 text-white w-12 h-12 rounded-full flex items-center justify-center -mt-10 shadow-lg border-4 border-white">
-                <i class="fas fa-plus"></i>
-            </div>
-            <i class="fas fa-chart-pie text-xl"></i>
-            <i class="fas fa-cog text-xl"></i>
-        </nav>
-
-        <div id="searchDrawer" class="fixed inset-0 bg-black/50 z-50 hidden opacity-0 transition-opacity">
-            <div class="absolute bottom-0 w-full bg-white rounded-t-3xl p-6 transform translate-y-full transition-transform duration-300">
-                <div class="flex justify-between items-center mb-4">
-                    <h2 class="text-xl font-bold">搜尋全聯品項</h2>
-                    <button onclick="closeSearch()" class="text-gray-400 text-2xl">&times;</button>
-                </div>
-                <input type="text" id="searchInput" class="w-full bg-gray-100 rounded-xl p-4 mb-4 outline-none focus:ring-2 ring-blue-500" placeholder="輸入關鍵字，如：泡麵、鮮乳...">
+        <div id="searchDrawer" class="fixed inset-0 bg-black/60 z-50 hidden backdrop-blur-sm transition-all">
+            <div class="absolute bottom-0 w-full max-w-md bg-white rounded-t-[2.5rem] p-8 transform translate-y-full transition-transform duration-500">
+                <div class="w-12 h-1.5 bg-gray-200 rounded-full mx-auto mb-8"></div>
                 
-                <div class="grid grid-cols-2 gap-4">
-                    <button onclick="gotoPX()" class="bg-green-600 text-white p-4 rounded-xl font-bold flex flex-col items-center">
-                        <i class="fas fa-external-link-alt mb-2"></i>
-                        開啟全聯官網
+                <h2 class="text-2xl font-bold mb-6 text-gray-800">搜尋食物品項</h2>
+                
+                <div class="relative mb-6">
+                    <i class="fas fa-search absolute left-4 top-4 text-gray-400"></i>
+                    <input type="text" id="foodInput" class="w-full bg-gray-100 rounded-2xl p-4 pl-12 outline-none focus:ring-2 ring-blue-500 text-gray-700" placeholder="輸入食物名稱，例如：維力炸醬麵">
+                </div>
+                
+                <div class="grid grid-cols-2 gap-4 mb-8">
+                    <button onclick="searchGoogle()" class="bg-white border-2 border-gray-100 p-6 rounded-3xl hover:border-blue-500 transition-colors flex flex-col items-center shadow-sm">
+                        <img src="https://www.google.com/favicon.ico" class="w-8 h-8 mb-2" alt="Google">
+                        <span class="font-bold text-gray-700">Google 搜尋</span>
                     </button>
-                    <button class="bg-gray-100 text-gray-700 p-4 rounded-xl font-bold flex flex-col items-center">
-                        <i class="fas fa-camera mb-2"></i>
-                        拍照辨識 (OCR)
+                    <button class="bg-white border-2 border-gray-100 p-6 rounded-3xl hover:border-blue-500 transition-colors flex flex-col items-center shadow-sm text-gray-400">
+                        <i class="fas fa-camera text-2xl mb-2"></i>
+                        <span class="font-bold">拍照辨識</span>
                     </button>
                 </div>
+
+                <button onclick="closeSearchDrawer()" class="w-full py-4 text-gray-400 font-medium">關閉視窗</button>
             </div>
         </div>
     </div>
 
     <script>
-        function openSearch(val) {
+        // 開啟搜尋抽屜
+        function openSearchDrawer() {
             const drawer = document.getElementById('searchDrawer');
-            const inner = drawer.querySelector('div');
-            document.getElementById('searchInput').value = val;
+            const content = drawer.querySelector('div');
             drawer.classList.remove('hidden');
             setTimeout(() => {
-                drawer.classList.remove('opacity-0');
-                inner.classList.remove('translate-y-full');
+                content.classList.remove('translate-y-full');
             }, 10);
         }
 
-        function closeSearch() {
+        // 關閉搜尋抽屜
+        function closeSearchDrawer() {
             const drawer = document.getElementById('searchDrawer');
-            const inner = drawer.querySelector('div');
-            drawer.classList.add('opacity-0');
-            inner.classList.add('translate-y-full');
-            setTimeout(() => drawer.classList.add('hidden'), 300);
+            const content = drawer.querySelector('div');
+            content.classList.add('translate-y-full');
+            setTimeout(() => drawer.classList.add('hidden'), 500);
         }
 
-        function gotoPX() {
-            const q = document.getElementById('searchInput').value;
-            window.open(`https://shop.pxmart.com.tw/v2/Search?q=${encodeURIComponent(q)}`, '_blank');
+        // 使用 Google 搜尋
+        function searchGoogle() {
+            const query = document.getElementById('foodInput').value;
+            if (!query) {
+                alert("請先輸入想搜尋的食物名稱");
+                return;
+            }
+            // 優化搜尋關鍵字，加上「熱量」或「營養成分」
+            const searchUrl = `https://www.google.com/search?q=${encodeURIComponent(query + ' 熱量 營養標示')}`;
+            window.open(searchUrl, '_blank');
         }
+
+        // 初始化日期
+        document.getElementById('headerDate').innerText = new Date().toLocaleDateString('zh-TW', {
+            year: 'numeric', month: 'long', day: 'numeric', weekday: 'long'
+        });
     </script>
 </body>
 </html>
