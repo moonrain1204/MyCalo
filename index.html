@@ -3,12 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MyCalo - 智慧飲食助手</title>
+    <title>MyCalo - 智慧飲食助手 v1.0.2</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
-        /* 模擬手機 App 的隱藏滾動條 */
         ::-webkit-scrollbar { display: none; }
+        .drawer-active { transform: translateY(0) !important; }
     </style>
 </head>
 <body class="bg-slate-50 font-sans">
@@ -17,31 +17,29 @@
         
         <header class="p-8 bg-gradient-to-br from-indigo-600 to-blue-500 text-white rounded-b-[2.5rem] shadow-xl">
             <div class="flex justify-between items-center mb-6">
-                <div class="text-sm font-light opacity-90" id="headerDate">2026年1月1日 星期四</div>
+                <div class="text-sm font-light opacity-90" id="headerDate">載入中...</div>
                 <div class="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center">
                     <i class="fas fa-user text-lg"></i>
                 </div>
             </div>
             
             <div class="flex items-center justify-around">
-                <div class="text-center">
-                    <div class="relative w-32 h-32 flex items-center justify-center">
-                        <svg class="absolute w-full h-full -rotate-90">
-                            <circle cx="64" cy="64" r="58" stroke="rgba(255,255,255,0.2)" stroke-width="8" fill="transparent" />
-                            <circle cx="64" cy="64" r="58" stroke="white" stroke-width="8" fill="transparent" 
-                                stroke-dasharray="364" stroke-dashoffset="100" stroke-linecap="round" />
-                        </svg>
-                        <div class="text-center">
-                            <span class="text-3xl font-bold">1138</span>
-                            <p class="text-[10px] opacity-80 uppercase tracking-wider">剩餘 kcal</p>
-                        </div>
+                <div class="text-center relative">
+                    <svg class="w-32 h-32 -rotate-90">
+                        <circle cx="64" cy="64" r="58" stroke="rgba(255,255,255,0.2)" stroke-width="8" fill="transparent" />
+                        <circle cx="64" cy="64" r="58" stroke="white" stroke-width="8" fill="transparent" 
+                            stroke-dasharray="364" stroke-dashoffset="120" stroke-linecap="round" />
+                    </svg>
+                    <div class="absolute inset-0 flex flex-col items-center justify-center">
+                        <span class="text-3xl font-bold">1138</span>
+                        <p class="text-[10px] opacity-80 uppercase">剩餘 kcal</p>
                     </div>
                 </div>
                 
                 <div class="space-y-3 text-sm">
-                    <div class="flex justify-between w-24"><span>碳水</span><span class="font-bold">58g</span></div>
-                    <div class="flex justify-between w-24"><span>蛋白質</span><span class="font-bold">42g</span></div>
-                    <div class="flex justify-between w-24"><span>脂肪</span><span class="font-bold">15g</span></div>
+                    <div class="flex justify-between w-28"><span>碳水</span><span class="font-bold">58 / 179g</span></div>
+                    <div class="flex justify-between w-28"><span>蛋白質</span><span class="font-bold">42 / 85g</span></div>
+                    <div class="flex justify-between w-28"><span>脂肪</span><span class="font-bold">15 / 58g</span></div>
                 </div>
             </div>
         </header>
@@ -49,79 +47,80 @@
         <main class="p-6 space-y-8">
             <section>
                 <div class="flex justify-between items-center mb-4">
-                    <h3 class="text-2xl font-bold text-gray-800">午餐</h3>
-                    <span class="bg-blue-100 text-blue-600 text-xs px-3 py-1 rounded-full font-bold">11:30 AM</span>
+                    <h3 class="text-2xl font-bold text-gray-800">今日飲食</h3>
+                    <button class="text-blue-500 text-sm font-bold"><i class="fas fa-calendar-day mr-1"></i>切換日期</button>
                 </div>
                 
-                <div onclick="openSearchDrawer()" class="group border-2 border-dashed border-gray-200 rounded-3xl p-8 flex flex-col items-center justify-center bg-gray-50 hover:bg-white hover:border-blue-400 transition-all cursor-pointer">
-                    <div class="bg-white text-blue-500 w-12 h-12 rounded-2xl shadow-sm flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
+                <div onclick="toggleDrawer(true)" class="group border-2 border-dashed border-gray-200 rounded-3xl p-8 flex flex-col items-center justify-center bg-gray-50 hover:bg-indigo-50 hover:border-indigo-300 transition-all cursor-pointer">
+                    <div class="bg-white text-indigo-500 w-12 h-12 rounded-2xl shadow-sm flex items-center justify-center mb-3">
                         <i class="fas fa-plus text-xl"></i>
                     </div>
-                    <p class="text-gray-500 font-bold">新增食物紀錄</p>
-                    <p class="text-xs text-gray-400 mt-1">搜尋熱量資訊並記錄</p>
+                    <p class="text-gray-600 font-bold">新增食物紀錄</p>
                 </div>
             </section>
         </main>
 
-        <div id="searchDrawer" class="fixed inset-0 bg-black/60 z-50 hidden backdrop-blur-sm transition-all">
-            <div class="absolute bottom-0 w-full max-w-md bg-white rounded-t-[2.5rem] p-8 transform translate-y-full transition-transform duration-500">
+        <div id="searchDrawer" class="fixed inset-0 bg-black/60 z-50 hidden backdrop-blur-sm transition-opacity duration-300 opacity-0">
+            <div id="drawerContent" class="absolute bottom-0 w-full max-w-md bg-white rounded-t-[2.5rem] p-8 transform translate-y-full transition-transform duration-500 ease-out">
                 <div class="w-12 h-1.5 bg-gray-200 rounded-full mx-auto mb-8"></div>
-                
                 <h2 class="text-2xl font-bold mb-6 text-gray-800">搜尋食物品項</h2>
                 
-                <div class="relative mb-6">
-                    <i class="fas fa-search absolute left-4 top-4 text-gray-400"></i>
-                    <input type="text" id="foodInput" class="w-full bg-gray-100 rounded-2xl p-4 pl-12 outline-none focus:ring-2 ring-blue-500 text-gray-700" placeholder="輸入食物名稱，例如：維力炸醬麵">
-                </div>
+                <input type="text" id="foodInput" class="w-full bg-gray-100 rounded-2xl p-4 mb-6 outline-none focus:ring-2 ring-indigo-500" placeholder="例如：維力炸醬麵">
                 
-                <div class="grid grid-cols-2 gap-4 mb-8">
-                    <button onclick="searchGoogle()" class="bg-white border-2 border-gray-100 p-6 rounded-3xl hover:border-blue-500 transition-colors flex flex-col items-center shadow-sm">
-                        <img src="https://www.google.com/favicon.ico" class="w-8 h-8 mb-2" alt="Google">
+                <div class="grid grid-cols-2 gap-4 mb-4">
+                    <button onclick="searchGoogle()" class="bg-slate-50 border border-gray-100 p-6 rounded-3xl flex flex-col items-center">
+                        <img src="https://www.google.com/favicon.ico" class="w-6 h-6 mb-2">
                         <span class="font-bold text-gray-700">Google 搜尋</span>
                     </button>
-                    <button class="bg-white border-2 border-gray-100 p-6 rounded-3xl hover:border-blue-500 transition-colors flex flex-col items-center shadow-sm text-gray-400">
-                        <i class="fas fa-camera text-2xl mb-2"></i>
-                        <span class="font-bold">拍照辨識</span>
+                    <button class="bg-slate-50 border border-gray-100 p-6 rounded-3xl flex flex-col items-center text-gray-400">
+                        <i class="fas fa-barcode text-2xl mb-2"></i>
+                        <span class="font-bold">條碼掃描</span>
                     </button>
                 </div>
-
-                <button onclick="closeSearchDrawer()" class="w-full py-4 text-gray-400 font-medium">關閉視窗</button>
+                <button onclick="toggleDrawer(false)" class="w-full py-4 text-gray-400">關閉</button>
             </div>
         </div>
+
+        <div class="fixed bottom-4 left-4 z-[100] pointer-events-none">
+            <span class="bg-black/10 backdrop-blur-md text-[10px] text-gray-500 px-2 py-1 rounded-md font-mono">
+                v1.0.2-beta
+            </span>
+        </div>
+
+        <nav class="fixed bottom-0 max-w-md w-full bg-white/80 backdrop-blur-lg border-t border-gray-100 p-4 flex justify-around items-center">
+            <i class="fas fa-home text-indigo-500 text-xl"></i>
+            <i class="fas fa-chart-line text-gray-300 text-xl"></i>
+            <div class="w-12 h-12 bg-indigo-500 rounded-full -mt-10 border-4 border-white flex items-center justify-center text-white shadow-lg">
+                <i class="fas fa-plus"></i>
+            </div>
+            <i class="fas fa-book text-gray-300 text-xl"></i>
+            <i class="fas fa-cog text-gray-300 text-xl"></i>
+        </nav>
     </div>
 
     <script>
-        // 開啟搜尋抽屜
-        function openSearchDrawer() {
+        function toggleDrawer(show) {
             const drawer = document.getElementById('searchDrawer');
-            const content = drawer.querySelector('div');
-            drawer.classList.remove('hidden');
-            setTimeout(() => {
-                content.classList.remove('translate-y-full');
-            }, 10);
-        }
-
-        // 關閉搜尋抽屜
-        function closeSearchDrawer() {
-            const drawer = document.getElementById('searchDrawer');
-            const content = drawer.querySelector('div');
-            content.classList.add('translate-y-full');
-            setTimeout(() => drawer.classList.add('hidden'), 500);
-        }
-
-        // 使用 Google 搜尋
-        function searchGoogle() {
-            const query = document.getElementById('foodInput').value;
-            if (!query) {
-                alert("請先輸入想搜尋的食物名稱");
-                return;
+            const content = document.getElementById('drawerContent');
+            if (show) {
+                drawer.classList.remove('hidden');
+                setTimeout(() => {
+                    drawer.classList.add('opacity-100');
+                    content.classList.add('drawer-active');
+                }, 10);
+            } else {
+                drawer.classList.remove('opacity-100');
+                content.classList.remove('drawer-active');
+                setTimeout(() => drawer.classList.add('hidden'), 500);
             }
-            // 優化搜尋關鍵字，加上「熱量」或「營養成分」
-            const searchUrl = `https://www.google.com/search?q=${encodeURIComponent(query + ' 熱量 營養標示')}`;
-            window.open(searchUrl, '_blank');
         }
 
-        // 初始化日期
+        function searchGoogle() {
+            const q = document.getElementById('foodInput').value;
+            if (!q) return alert("請輸入食物名稱");
+            window.open(`https://www.google.com/search?q=${encodeURIComponent(q + ' 熱量 營養成分')}`, '_blank');
+        }
+
         document.getElementById('headerDate').innerText = new Date().toLocaleDateString('zh-TW', {
             year: 'numeric', month: 'long', day: 'numeric', weekday: 'long'
         });
